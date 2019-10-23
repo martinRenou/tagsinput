@@ -179,7 +179,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
             return;
         }
 
-        if (!this.isValidTag(newTagValue)) {
+        if (!this.isValidTagValue(newTagValue)) {
             // Do nothing for now, maybe show a proper error message?
             return;
         }
@@ -381,7 +381,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
     /**
      * Validate an input tag typed by the user. This should be overridden in subclasses.
      */
-    isValidTag(value: string) : boolean {
+    isValidTagValue(value: string) : boolean {
         return true;
     }
 
@@ -532,7 +532,7 @@ class ColorsInputView extends TagsInputBaseView {
     /**
      * Validate a color tag typed by the user.
      */
-    isValidTag(value: string) : boolean {
+    isValidTagValue(value: string) : boolean {
         return d3Color.color(value) !== null;
     }
 
