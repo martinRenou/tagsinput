@@ -144,6 +144,20 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
             const tag = this.createTag(value[index], index, this.selection != null && this.selection.isSelected(index));
 
+            // Drag and drop
+            tag.draggable = true;
+            tag.ondragstart = ((index: number, value: any) => {
+                return (event: DragEvent) => {
+                    this.ondragstart(event, index, String(value), this.model.model_id);
+                };
+            })(index, value[index]);
+            tag.ondrop = ((index: number) => {
+                return (event: DragEvent) => {
+                    this.ondrop(event, index);
+                };
+            })(index);
+            tag.ondragover = this.ondragover.bind(this);
+
             this.tags.push(tag);
             this.el.appendChild(tag);
         }
@@ -169,22 +183,38 @@ abstract class TagsInputBaseView extends DOMWidgetView {
     }
 
     /**
-     * Handle a new value is added
+     * Handle a new value is added from the input element
      */
     handleValueAdded(event: Event) {
-        const value: Array<any> = this.model.get('value');
         const newTagValue = trim(this.taginput.value);
+        const tagIndex = this.inputIndex;
 
         if (newTagValue == '') {
             return;
         }
 
-        if (!this.isValidTagValue(newTagValue)) {
+        this.inputIndex++;
+
+        this.addTag(tagIndex, newTagValue);
+
+        // Clear the input and keep focus on it allowing the user to add more tags
+        this.taginput.value = '';
+        this.resizeInput();
+        this.focus();
+    }
+
+    /**
+     * Add a new tag with a value of `tagValue` at the `index` position
+     */
+    addTag(index: number, tagValue: any) {
+        const value: Array<any> = this.model.get('value');
+
+        if (!this.isValidTagValue(tagValue)) {
             // Do nothing for now, maybe show a proper error message?
             return;
         }
 
-        if (!this.model.get('allow_duplicates') && value.includes(newTagValue)) {
+        if (!this.model.get('allow_duplicates') && value.includes(tagValue)) {
             // Do nothing for now, maybe add an animation to highlight the tag?
             return;
         }
@@ -194,17 +224,10 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
         // Making a copy so that backbone sees the change, and insert the new tag
         const newValue = [...value];
-        newValue.splice(this.inputIndex, 0, newTagValue);
-
-        this.inputIndex++;
+        newValue.splice(index, 0, tagValue);
 
         this.model.set('value', newValue);
         this.model.save_changes();
-
-        // Clear the input and keep focus on it allowing the user to add more tags
-        this.taginput.value = '';
-        this.resizeInput();
-        this.focus();
     }
 
     /**
@@ -289,6 +312,54 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
         this.update();
         this.focus();
+    }
+
+    /**
+     * Function that gets called when a tag with a given `value` is being dragged.
+     */
+    ondragstart(event: DragEvent, index: number, tagValue: string, origin: string) {
+        if (event.dataTransfer == null) {
+            return;
+        }
+        event.dataTransfer.setData('index', String(index));
+        event.dataTransfer.setData('tagValue', tagValue);
+        event.dataTransfer.setData('origin', origin);
+    }
+
+    /**
+     * Function that gets called when a tag has been dragged on the tag at the `index` position.
+     */
+    ondrop(event: DragEvent, index: number) {
+        if (event.dataTransfer == null) {
+            return;
+        }
+        event.preventDefault();
+
+        const tagValue: string = event.dataTransfer.getData('tagValue');
+        const tagIndex: number = parseInt(event.dataTransfer.getData('index'));
+        const sameOrigin = event.dataTransfer.getData('origin') == this.model.model_id;
+
+        // If it's the same origin, the drag and drop results in a reordering
+        if (sameOrigin) {
+            const value: Array<any> = this.model.get('value');
+
+            const newValue = [...value];
+
+            newValue.splice(tagIndex, 1); // Removing at the old position
+            newValue.splice(index, 0, tagValue); // Adding at the new one
+
+            this.model.set('value', newValue);
+            this.model.save_changes();
+
+            return;
+        }
+
+        // Else we add a new tag with the given tagValue
+        this.addTag(index, tagValue);
+    }
+
+    ondragover(event: DragEvent) {
+        event.preventDefault();
     }
 
     /**

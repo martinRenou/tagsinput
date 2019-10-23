@@ -33,6 +33,7 @@
     border: none;
     user-select: none;
 
+    cursor: grab;
     margin: 1px 1px 1px 1px;
 }
 
@@ -57,6 +58,7 @@
     color: var(--jp-ui-font-color0);
     background-color: var(--jp-layout-color0);
 
+    cursor: text;
     text-align: left;
 }
 
