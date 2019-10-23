@@ -360,7 +360,11 @@ abstract class TagsInputBaseView extends DOMWidgetView {
             return;
         }
 
-        this.taginput.style.display = 'none';
+        // Only hide the input if we have tag displayed
+        if (this.model.get('value').length) {
+            this.taginput.style.display = 'none';
+        }
+
         this.selection = null;
         this.updateTags();
     }
