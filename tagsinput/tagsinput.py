@@ -13,10 +13,18 @@ from traitlets import (
     CaselessStrEnum, Bool, Unicode, List, TraitError, validate
 )
 
-from ipywidgets import Color, DescriptionWidget, ValueWidget
+from ipywidgets import Color, ValueWidget
+
+from ._frontend import module_name, module_version
 
 
-class TagsInputBase(DescriptionWidget, ValueWidget):
+
+class TagsInputBase(ValueWidget):
+    _model_module = Unicode(module_name).tag(sync=True)
+    _model_module_version = Unicode(module_version).tag(sync=True)
+    _view_module = Unicode(module_name).tag(sync=True)
+    _view_module_version = Unicode(module_version).tag(sync=True)
+
     value = List().tag(sync=True)
     allow_duplicates = Bool(True).tag(sync=True)
 

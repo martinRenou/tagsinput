@@ -9,6 +9,13 @@ import {
 
 import * as _ from 'underscore';
 
+import {
+  MODULE_NAME, MODULE_VERSION
+} from './version';
+
+// Import CSS
+import '../css/tagsinput.css'
+
 /**
  * Returns a new string after removing any leading and trailing whitespaces.
  * The original string is left unchanged.
@@ -74,8 +81,17 @@ class TagsInputBaseModel extends DOMWidgetModel {
         return _.extend(super.defaults(), {
             value: [],
             allow_duplicates: true,
+            _model_module: TagsInputBaseModel.model_module,
+            _model_module_version: TagsInputBaseModel.model_module_version,
+            _view_module: TagsInputBaseModel.view_module,
+            _view_module_version: TagsInputBaseModel.view_module_version,
         });
     }
+
+    static model_module = MODULE_NAME;
+    static model_module_version = MODULE_VERSION;
+    static view_module = MODULE_NAME;
+    static view_module_version = MODULE_VERSION;
 }
 
 abstract class TagsInputBaseView extends DOMWidgetView {
@@ -126,7 +142,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
         for (const idx in value) {
             const index = parseInt(idx);
 
-            const tag = this.createTag(value[index], index, this.selection && this.selection.isSelected(index));
+            const tag = this.createTag(value[index], index, this.selection != null && this.selection.isSelected(index));
 
             this.tags.push(tag);
             this.el.appendChild(tag);
@@ -148,7 +164,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
         for (const idx in this.tags) {
             const index = parseInt(idx);
 
-            this.updateTag(this.tags[index], value[index], index, this.selection && this.selection.isSelected(index));
+            this.updateTag(this.tags[index], value[index], index, this.selection != null && this.selection.isSelected(index));
         }
     }
 
@@ -297,7 +313,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
         // It is simpler to remove from right to left
         for (let idx = valueLength - 1; idx >= 0; idx--) {
-            if (this.selection.isSelected(idx)) {
+            if (this.selection != null && this.selection.isSelected(idx)) {
                 value.splice(idx, 1);
 
                 // Move the input to the left if we remove a tag that is before the input
