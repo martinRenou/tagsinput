@@ -148,7 +148,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
             tag.draggable = true;
             tag.ondragstart = ((index: number, value: any) => {
                 return (event: DragEvent) => {
-                    this.ondragstart(event, index, String(value), this.model.model_id);
+                    this.ondragstart(event, index, value, this.model.model_id);
                 };
             })(index, value[index]);
             tag.ondrop = ((index: number) => {
@@ -317,12 +317,12 @@ abstract class TagsInputBaseView extends DOMWidgetView {
     /**
      * Function that gets called when a tag with a given `value` is being dragged.
      */
-    ondragstart(event: DragEvent, index: number, tagValue: string, origin: string) {
+    ondragstart(event: DragEvent, index: number, tagValue: any, origin: string) {
         if (event.dataTransfer == null) {
             return;
         }
         event.dataTransfer.setData('index', String(index));
-        event.dataTransfer.setData('tagValue', tagValue);
+        event.dataTransfer.setData('tagValue', String(tagValue));
         event.dataTransfer.setData('origin', origin);
     }
 
