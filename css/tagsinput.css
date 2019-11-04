@@ -34,6 +34,7 @@
     user-select: none;
 
     cursor: grab;
+    transition: margin-left 200ms;
     margin: 1px 1px 1px 1px;
 }
 

@@ -136,6 +136,12 @@ abstract class TagsInputBaseView extends DOMWidgetView {
         this.taginputWrapper.appendChild(this.autocompleteList);
 
         this.el.onclick = this.focus.bind(this);
+        this.el.ondrop = (event: DragEvent) => {
+            // Put the tag at the end of the list if there is no currently hovered tag
+            const index = this.hoveredTagIndex == null ? this.tags.length : this.hoveredTagIndex;
+            this.ondrop(event, index);
+        };
+        this.el.ondragover = this.ondragover.bind(this);
 
         this.taginput.onchange = this.handleValueAdded.bind(this);
         this.taginput.oninput = this.resizeInput.bind(this);
@@ -183,6 +189,12 @@ abstract class TagsInputBaseView extends DOMWidgetView {
                 };
             })(index);
             tag.ondragover = this.ondragover.bind(this);
+            tag.ondragenter = ((index: number) => {
+                return (event: DragEvent) => {
+                    this.ondragenter(event, index);
+                };
+            })(index);
+            tag.ondragend = this.ondragend.bind(this);
 
             this.tags.push(tag);
             this.el.appendChild(tag);
@@ -386,9 +398,14 @@ abstract class TagsInputBaseView extends DOMWidgetView {
         }
         event.preventDefault();
 
-        const tagValue: string = event.dataTransfer.getData('tagValue');
-        const tagIndex: number = parseInt(event.dataTransfer.getData('index'));
+        const draggedTagValue: string = event.dataTransfer.getData('tagValue');
+        const draggedTagindex: number = parseInt(event.dataTransfer.getData('index'));
         const sameOrigin = event.dataTransfer.getData('origin') == this.model.model_id;
+
+        // If something else than a tag was dropped, draggedTagindex should be NaN
+        if (isNaN(draggedTagindex)) {
+            return;
+        }
 
         // If it's the same origin, the drag and drop results in a reordering
         if (sameOrigin) {
@@ -396,8 +413,14 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
             const newValue = [...value];
 
-            newValue.splice(tagIndex, 1); // Removing at the old position
-            newValue.splice(index, 0, tagValue); // Adding at the new one
+            // If the old position is on the left of the new position, we need to re-index the new position
+            // after removing the tag at the old position
+            if (draggedTagindex < index) {
+                index--;
+            }
+
+            newValue.splice(draggedTagindex, 1); // Removing at the old position
+            newValue.splice(index, 0, draggedTagValue); // Adding at the new one
 
             this.model.set('value', newValue);
             this.model.save_changes();
@@ -405,12 +428,31 @@ abstract class TagsInputBaseView extends DOMWidgetView {
             return;
         }
 
-        // Else we add a new tag with the given tagValue
-        this.addTag(index, tagValue);
+        // Else we add a new tag with the given draggedTagValue
+        this.addTag(index, draggedTagValue);
     }
 
     ondragover(event: DragEvent) {
+        // This is needed for the drag and drop to work
         event.preventDefault();
+    }
+
+    ondragenter(event: DragEvent, index: number) {
+        if (this.hoveredTag != null && this.hoveredTag != this.tags[index]) {
+            this.hoveredTag.style.marginLeft = '1px';
+        }
+
+        this.hoveredTag = this.tags[index];
+        this.hoveredTagIndex = index;
+        this.hoveredTag.style.marginLeft = '30px';
+    }
+
+    ondragend() {
+        if (this.hoveredTag != null) {
+            this.hoveredTag.style.marginLeft = '1px';
+        }
+        this.hoveredTag = null;
+        this.hoveredTagIndex = null;
     }
 
     /**
@@ -519,6 +561,8 @@ abstract class TagsInputBaseView extends DOMWidgetView {
     taginput: HTMLInputElement;
     autocompleteList: HTMLDataListElement;
     tags: HTMLElement[];
+    hoveredTag: HTMLElement | null = null;
+    hoveredTagIndex: number | null = null;
     datalistID: string;
     inputIndex: number;
     selection: null | Selection
