@@ -250,16 +250,24 @@ abstract class TagsInputBaseView extends DOMWidgetView {
      * Add a new tag with a value of `tagValue` at the `index` position
      * Return true if the tag was correctly added, false otherwise
      */
-    addTag(index: number, tagValue: any) : boolean {
+    addTag(index: number, tagValue: string) : boolean {
         const value: Array<any> = this.model.get('value');
 
+        let newTagValue: any;
+        try {
+            newTagValue = this.validateValue(tagValue);
+        }
+        catch (error) {
+            return false;
+        }
+
         const allowedTagValues = this.model.get('allowed_tags');
-        if (!this.isValidTagValue(tagValue) || (allowedTagValues.length && !allowedTagValues.includes(tagValue))) {
+        if (allowedTagValues.length && !allowedTagValues.includes(newTagValue)) {
             // Do nothing for now, maybe show a proper error message?
             return false;
         }
 
-        if (!this.model.get('allow_duplicates') && value.includes(tagValue)) {
+        if (!this.model.get('allow_duplicates') && value.includes(newTagValue)) {
             // Do nothing for now, maybe add an animation to highlight the tag?
             return false;
         }
@@ -269,7 +277,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
         // Making a copy so that backbone sees the change, and insert the new tag
         const newValue = [...value];
-        newValue.splice(index, 0, tagValue);
+        newValue.splice(index, 0, newTagValue);
 
         this.model.set('value', newValue);
         this.model.save_changes();
@@ -474,7 +482,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
             return;
         }
 
-        // Only hide the input if we have tag displayed
+        // Only hide the input if we have tags displayed
         if (this.model.get('value').length) {
             this.taginputWrapper.style.display = 'none';
         }
@@ -497,10 +505,10 @@ abstract class TagsInputBaseView extends DOMWidgetView {
     }
 
     /**
-     * Validate an input tag typed by the user. This should be overridden in subclasses.
+     * Validate an input tag typed by the user, returning the correct tag type. This should be overridden in subclasses.
      */
-    isValidTagValue(value: string) : boolean {
-        return true;
+    validateValue(value: string) : any {
+        return value;
     }
 
     abstract createTag(value: any, index: number, selected: boolean) : HTMLElement;
@@ -651,11 +659,86 @@ class ColorsInputView extends TagsInputBaseView {
     }
 
     /**
-     * Validate a color tag typed by the user.
+     * Validate an input tag typed by the user, returning the correct tag type. This should be overridden in subclasses.
      */
-    isValidTagValue(value: string) : boolean {
-        return d3Color.color(value) !== null;
+    validateValue(value: string) : any {
+        if (d3Color.color(value) == null) {
+            throw value + ' is not a valid Color';
+        }
+
+        return value;
     }
 
     model: ColorsInputModel;
+}
+
+abstract class NumbersInputModel extends TagsInputModel {
+    defaults() {
+        return _.extend(super.defaults(), {
+            min: null,
+            max: null,
+        });
+    }
+}
+
+abstract class NumbersInputView extends TagsInputView {
+    /**
+     * Validate an input tag typed by the user, returning the correct tag type. This should be overridden in subclasses.
+     */
+    validateValue(value: string) : any {
+        const parsed = this.parseNumber(value);
+        const min: number | null = this.model.get('min');
+        const max: number | null = this.model.get('max');
+
+        if (isNaN(parsed) || (min != null && parsed < min) || (max != null && parsed > max)) {
+            throw value + ' is not a valid number, it should be in the range [' + min + ', ' + max + ']';
+        }
+
+        return parsed;
+    }
+
+    abstract parseNumber(value: string) : number;
+}
+
+export
+class FloatsInputModel extends NumbersInputModel {
+    defaults() {
+        return _.extend(super.defaults(), {
+            _view_name: 'FloatsInputView',
+            _model_name: 'FloatsInputModel',
+        });
+    }
+}
+
+export
+class FloatsInputView extends NumbersInputView {
+    parseNumber(value: string) : number {
+        return parseFloat(value);
+    }
+
+    model: FloatsInputModel;
+}
+
+export
+class IntsInputModel extends NumbersInputModel {
+    defaults() {
+        return _.extend(super.defaults(), {
+            _view_name: 'IntsInputView',
+            _model_name: 'IntsInputModel',
+        });
+    }
+}
+
+export
+class IntsInputView extends NumbersInputView {
+    parseNumber(value: string) : number {
+        const int = parseInt(value);
+        if (int != parseFloat(value)) {
+            throw value + ' should be an integer';
+        }
+
+        return int;
+    }
+
+    model: IntsInputModel;
 }

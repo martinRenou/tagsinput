@@ -10,7 +10,7 @@ Represents a list of tags.
 """
 
 from traitlets import (
-    Bool, CaselessStrEnum, List, TraitError, Unicode, validate
+    Bool, CaselessStrEnum, CFloat, CInt, List, TraitError, Unicode, validate
 )
 
 from ipywidgets import Color, DOMWidget
@@ -64,4 +64,41 @@ class ColorsInput(TagsInputBase):
     _model_name = Unicode('ColorsInputModel').tag(sync=True)
     _view_name = Unicode('ColorsInputView').tag(sync=True)
 
-    value = List(Color(), help='List of string tags').tag(sync=True)
+    value = List(Color(), help='List of color tags').tag(sync=True)
+
+
+class NumbersInputBase(TagsInput):
+    min = CFloat(default_value=None, allow_none=True).tag(sync=True)
+    max = CFloat(default_value=None, allow_none=True).tag(sync=True)
+
+    @validate('value')
+    def _validate_numbers(self, proposal):
+        for tag_value in proposal['value']:
+            if self.min is not None and tag_value < self.min:
+                raise TraitError('Tag value {} should be >= {}'.format(tag_value, self.min))
+            if self.max is not None and tag_value > self.max:
+                raise TraitError('Tag value {} should be <= {}'.format(tag_value, self.max))
+
+        return proposal['value']
+
+
+class FloatsInput(NumbersInputBase):
+    """
+    List of float tags
+    """
+    _model_name = Unicode('FloatsInputModel').tag(sync=True)
+    _view_name = Unicode('FloatsInputView').tag(sync=True)
+
+    value = List(CFloat(), help='List of float tags').tag(sync=True)
+
+
+class IntsInput(NumbersInputBase):
+    """
+    List of int tags
+    """
+    _model_name = Unicode('IntsInputModel').tag(sync=True)
+    _view_name = Unicode('IntsInputView').tag(sync=True)
+
+    value = List(CInt(), help='List of int tags').tag(sync=True)
+    min = CInt(default_value=None, allow_none=True).tag(sync=True)
+    max = CInt(default_value=None, allow_none=True).tag(sync=True)
