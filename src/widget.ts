@@ -4,7 +4,7 @@
 const d3Color = require('d3-color');
 
 import {
-    DOMWidgetModel, DOMWidgetView, Dict
+    DOMWidgetModel, DOMWidgetView, Dict, uuid
 } from '@jupyter-widgets/base';
 
 import * as _ from 'underscore';
@@ -29,6 +29,15 @@ function trim(value: string) : string {
  */
 function clamp(value: number, min: number, max: number) : number {
   return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Remove children from an HTMLElement
+ */
+function removeChildren(el: HTMLElement) {
+    while (el.firstChild) {
+        el.removeChild(el.firstChild);
+    }
 }
 
 /**
@@ -80,6 +89,7 @@ class TagsInputBaseModel extends DOMWidgetModel {
     defaults() {
         return _.extend(super.defaults(), {
             value: [],
+            allowed_tags: null,
             allow_duplicates: true,
             _model_module: TagsInputBaseModel.model_module,
             _model_module_version: TagsInputBaseModel.model_module_version,
@@ -100,12 +110,30 @@ abstract class TagsInputBaseView extends DOMWidgetView {
      */
     render() {
         super.render();
+
         this.el.classList.add('jupyter-widgets');
         this.el.classList.add('jupyter-widget-tagsinput');
+
+        this.taginputWrapper = document.createElement('div');
+
+        // The taginput is not displayed until the user focuses on the widget
+        this.taginputWrapper.style.display = 'none';
+
+        this.datalistID = uuid();
 
         this.taginput = document.createElement('input');
         this.taginput.classList.add('jupyter-widget-tag');
         this.taginput.classList.add('jupyter-widget-taginput');
+        this.taginput.setAttribute('list', this.datalistID);
+
+        this.autocompleteList = document.createElement('datalist');
+        this.autocompleteList.id = this.datalistID;
+
+        this.updateAutocomplete();
+        this.model.on('change:allowed_tags', this.updateAutocomplete.bind(this));
+
+        this.taginputWrapper.appendChild(this.taginput);
+        this.taginputWrapper.appendChild(this.autocompleteList);
 
         this.el.onclick = this.focus.bind(this);
 
@@ -133,9 +161,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
         // Prevent hiding the input element and clearing the selection when updating everything
         this.preventLoosingFocus = true;
 
-        while (this.el.firstChild) {
-            this.el.removeChild(this.el.firstChild);
-        }
+        removeChildren(this.el);
         this.tags = [];
 
         const value: Array<any> = this.model.get('value');
@@ -162,11 +188,26 @@ abstract class TagsInputBaseView extends DOMWidgetView {
             this.el.appendChild(tag);
         }
 
-        this.el.insertBefore(this.taginput, this.el.children[this.inputIndex]);
+        this.el.insertBefore(this.taginputWrapper, this.el.children[this.inputIndex]);
 
         this.preventLoosingFocus = false;
 
         return super.update();
+    }
+
+    /**
+     * Update the auto-completion list
+     */
+    updateAutocomplete() {
+        removeChildren(this.autocompleteList);
+
+        const allowedTags = this.model.get('allowed_tags');
+
+        for (const tag of allowedTags) {
+            const option = document.createElement('option');
+            option.value = tag;
+            this.autocompleteList.appendChild(option);
+        }
     }
 
     /**
@@ -195,28 +236,32 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
         this.inputIndex++;
 
-        this.addTag(tagIndex, newTagValue);
+        const tagAdded = this.addTag(tagIndex, newTagValue);
 
-        // Clear the input and keep focus on it allowing the user to add more tags
-        this.taginput.value = '';
-        this.resizeInput();
-        this.focus();
+        if (tagAdded) {
+            // Clear the input and keep focus on it allowing the user to add more tags
+            this.taginput.value = '';
+            this.resizeInput();
+            this.focus();
+        }
     }
 
     /**
      * Add a new tag with a value of `tagValue` at the `index` position
+     * Return true if the tag was correctly added, false otherwise
      */
-    addTag(index: number, tagValue: any) {
+    addTag(index: number, tagValue: any) : boolean {
         const value: Array<any> = this.model.get('value');
 
-        if (!this.isValidTagValue(tagValue)) {
+        const allowedTagValues = this.model.get('allowed_tags');
+        if (!this.isValidTagValue(tagValue) || (allowedTagValues.length && !allowedTagValues.includes(tagValue))) {
             // Do nothing for now, maybe show a proper error message?
-            return;
+            return false;
         }
 
         if (!this.model.get('allow_duplicates') && value.includes(tagValue)) {
             // Do nothing for now, maybe add an animation to highlight the tag?
-            return;
+            return false;
         }
 
         // Clearing the current selection before setting the new value
@@ -228,17 +273,15 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
         this.model.set('value', newValue);
         this.model.save_changes();
+
+        return true;
     }
 
     /**
      * Resize the input element
      */
     resizeInput() {
-        let size = this.taginput.value.length;
-        // If size is set to 0, the input gets too wide
-        if (size == 0) {
-            size = 1;
-        }
+        let size = this.taginput.value.length + 1;
         this.taginput.setAttribute('size', String(size));
     }
 
@@ -419,7 +462,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
      * Focus on the input element
      */
     focus() {
-        this.taginput.style.display = 'inline-block';
+        this.taginputWrapper.style.display = 'inline-block';
         this.taginput.focus();
     }
 
@@ -433,7 +476,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
 
         // Only hide the input if we have tag displayed
         if (this.model.get('value').length) {
-            this.taginput.style.display = 'none';
+            this.taginputWrapper.style.display = 'none';
         }
 
         this.selection = null;
@@ -464,8 +507,11 @@ abstract class TagsInputBaseView extends DOMWidgetView {
     abstract updateTag(tag: HTMLElement, value: any, index: number, selected: boolean) : void;
 
     el: HTMLDivElement;
+    taginputWrapper: HTMLDivElement;
     taginput: HTMLInputElement;
+    autocompleteList: HTMLDataListElement;
     tags: HTMLElement[];
+    datalistID: string;
     inputIndex: number;
     selection: null | Selection
     preventLoosingFocus: boolean;
