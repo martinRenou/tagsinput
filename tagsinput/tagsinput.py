@@ -13,7 +13,7 @@ from traitlets import (
     Bool, CaselessStrEnum, CFloat, CInt, List, TraitError, Unicode, validate
 )
 
-from ipywidgets import Color, DOMWidget
+from ipywidgets import Color, DOMWidget, NumberFormat
 
 from ._frontend import module_name, module_version
 
@@ -90,6 +90,7 @@ class FloatsInput(NumbersInputBase):
     _view_name = Unicode('FloatsInputView').tag(sync=True)
 
     value = List(CFloat(), help='List of float tags').tag(sync=True)
+    format = NumberFormat('.1f').tag(sync=True)
 
 
 class IntsInput(NumbersInputBase):
@@ -100,5 +101,6 @@ class IntsInput(NumbersInputBase):
     _view_name = Unicode('IntsInputView').tag(sync=True)
 
     value = List(CInt(), help='List of int tags').tag(sync=True)
+    format = NumberFormat('.3g').tag(sync=True)
     min = CInt(default_value=None, allow_none=True).tag(sync=True)
     max = CInt(default_value=None, allow_none=True).tag(sync=True)

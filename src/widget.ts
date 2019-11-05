@@ -2,6 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 const d3Color = require('d3-color');
+const d3Format = require('d3-format');
 
 import {
     DOMWidgetModel, DOMWidgetView, Dict, uuid
@@ -599,7 +600,7 @@ class TagsInputView extends TagsInputBaseView {
             tag.classList.add('mod-active');
         }
 
-        tag.appendChild(document.createTextNode(value));
+        tag.appendChild(document.createTextNode(this.getTagText(value)));
 
         const i = document.createElement('i');
         i.classList.add('fa');
@@ -615,6 +616,13 @@ class TagsInputView extends TagsInputBaseView {
         })(index);
 
         return tag;
+    }
+
+    /**
+     * Returns the text that should be displayed in the tag element
+     */
+    getTagText(value: string) {
+        return value;
     }
 
     /**
@@ -726,6 +734,24 @@ abstract class NumbersInputModel extends TagsInputModel {
 }
 
 abstract class NumbersInputView extends TagsInputView {
+    render() {
+        // Initialize text formatter
+        this.model.on('change:format', () => {
+          this.formatter = d3Format.format(this.model.get('format'));
+          this.update();
+        });
+        this.formatter = d3Format.format(this.model.get('format'));
+
+        super.render();
+    }
+
+    /**
+     * Returns the text that should be displayed in the tag element
+     */
+    getTagText(value: string) {
+        return this.formatter(this.parseNumber(value));
+    }
+
     /**
      * Validate an input tag typed by the user, returning the correct tag type. This should be overridden in subclasses.
      */
@@ -742,6 +768,8 @@ abstract class NumbersInputView extends TagsInputView {
     }
 
     abstract parseNumber(value: string) : number;
+
+    formatter: (value: number) => string;
 }
 
 export
@@ -750,6 +778,7 @@ class FloatsInputModel extends NumbersInputModel {
         return _.extend(super.defaults(), {
             _view_name: 'FloatsInputView',
             _model_name: 'FloatsInputModel',
+            format: '.1f',
         });
     }
 }
@@ -769,6 +798,7 @@ class IntsInputModel extends NumbersInputModel {
         return _.extend(super.defaults(), {
             _view_name: 'IntsInputView',
             _model_name: 'IntsInputModel',
+            format: '.3g',
         });
     }
 }
