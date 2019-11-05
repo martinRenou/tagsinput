@@ -45,7 +45,8 @@
   },
   "dependencies": {
     "@jupyter-widgets/base": "^2",
-    "d3-color": "^1.4.0"
+    "d3-color": "^1.4.0",
+    "d3-format": "^1.4.1"
   },
   "devDependencies": {
     "@phosphor/application": "^1.6.0",
