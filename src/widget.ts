@@ -398,6 +398,7 @@ abstract class TagsInputBaseView extends DOMWidgetView {
             return;
         }
         event.preventDefault();
+        event.stopPropagation();
 
         const draggedTagValue: string = event.dataTransfer.getData('tagValue');
         const draggedTagindex: number = parseInt(event.dataTransfer.getData('index'));
